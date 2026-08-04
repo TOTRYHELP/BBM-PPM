@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aplikasi Reimburse BBM - PNM</title>
+  
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts (Plus Jakarta Sans) -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- html2pdf.js for Client-side PDF Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <style>
+    :root {
+      --pnm-blue: #00529C;
+      --pnm-blue-dark: #003366;
+      --pnm-green: #00A859;
+      --pnm-bg: #F4F7FA;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--pnm-bg);
+      color: #333;
+    }
+
+    /* Navbar styling */
+    .navbar-pnm {
+      background: linear-gradient(135deg, var(--pnm-blue-dark), var(--pnm-blue));
+      border-bottom: 4px solid var(--pnm-green);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .nav-tabs .nav-link {
+      color: rgba(255, 255, 255, 0.85);
+      font-weight: 500;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px 8px 0 0;
+      transition: all 0.3s;
+    }
+
+    .nav-tabs .nav-link:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .nav-tabs .nav-link.active {
+      color: var(--pnm-blue-dark);
+      background: #fff;
+      font-weight: 700;
+    }
+
+    /* Cards */
+    .card-custom {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      background: #fff;
+    }
+
+    .card-header-pnm {
+      background-color: #fff;
+      border-bottom: 2px solid #f0f0f0;
+      padding: 18px 24px;
+    }
+
+    .btn-pnm {
+      background-color: var(--pnm-blue);
+      color: white;
+      font-weight: 600;
+      border-radius: 8px;
+      padding: 10px 20px;
+      transition: all 0.3s;
+    }
+
+    .btn-pnm:hover {
+      background-color: var(--pnm-blue-dark);
+      color: white;
+    }
+
+    .btn-pnm-green {
+      background-color: var(--pnm-green);
+      color: white;
+      font-weight: 600;
+      border-radius: 8px;
+      padding: 10px 20px;
+    }
+
+    .btn-pnm-green:hover {
+      background-color: #008f4c;
+      color: white;
+    }
+
+    /* Image Preview Box */
+    .img-preview-box {
+      width: 100%;
+      height: 220px;
+      border: 2px dashed #CBD5E1;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #F8FAFC;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .img-preview-box img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    /* Table & PDF Styles */
+    .pdf-page {
+      background: white;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .table-custom th {
+      background-color: var(--pnm-blue) !important;
+      color: white !important;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.82rem;
+    }
+
+    .img-thumbnail-table {
+      width: 130px;
+      height: 90px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <nav class="navbar navbar-pnm navbar-dark sticky-top">
+    <div class="container-fluid px-4">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+        <i class="fa-solid fa-gas-pump text-warning fs-4"></i>
+        <span class="fw-bold tracking-wide">REIMBURSE BBM PNM</span>
+      </a>
+      <ul class="nav nav-tabs border-0 mt-2" id="pnmTab" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="input-tab" data-bs-toggle="tab" data-bs-target="#input-pane" type="button" role="tab">
+            <i class="fa-solid fa-pen-to-square me-2"></i>Halaman 1: Input Reimburse
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="resume-tab" data-bs-toggle="tab" data-bs-target="#resume-pane" type="button" role="tab" onclick="loadSourceData()">
+            <i class="fa-solid fa-table-list me-2"></i>Halaman 2: Resume & Export
+          </button>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="container my-4">
+    <div class="tab-content" id="pnmTabContent">
+      
+      <!-- HALAMAN 1: FORM INPUT REIMBURSE -->
+      <div class="tab-pane fade show active" id="input-pane" role="tabpanel">
+        <div class="row justify-content-center">
+          <div class="col-lg-10">
+            <div class="card card-custom">
+              <div class="card-header-pnm d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-primary fw-bold"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Form Input Reimburse BBM</h5>
+                <span class="badge bg-success px-3 py-2">Wilayah: 2</span>
+              </div>
+              <div class="card-body p-4">
+                <form id="formReimburse">
+                  <div class="row g-3">
+                    
+                    <!-- Left Form Input Fields -->
+                    <div class="col-md-7">
+                      <div class="row g-3">
+                        <div class="col-md-6">
+                          <label class="form-label fw-semibold">Wilayah</label>
+                          <input type="text" class="form-control bg-light" value="2" readonly id="inputWilayah">
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label fw-semibold">Tanggal Nota <span class="text-danger">*</span></label>
+                          <input type="date" class="form-control" id="inputTanggalNota" required>
+                        </div>
+                        <div class="col-12">
+                          <label class="form-label fw-semibold">Nama PPM <span class="text-danger">*</span></label>
+                          <select class="form-select" id="selectNamaPpm" required onchange="onOperatorChange()">
+                            <option value="" selected disabled>-- Pilih Nama PPM --</option>
+                          </select>
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label fw-semibold">Nopol Kendaraan</label>
+                          <input type="text" class="form-control bg-light" id="inputNopol" readonly placeholder="Auto dari PPM">
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label fw-semibold">Jenis Kendaraan</label>
+                          <input type="text" class="form-control bg-light" id="inputJenisKendaraan" readonly placeholder="Auto dari PPM">
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label fw-semibold">Kilometer Odometer <span class="text-danger">*</span></label>
+                          <div class="input-group">
+                            <input type="number" class="form-control" id="inputKilometer" placeholder="Contoh: 15420" required>
+                            <span class="input-group-text">KM</span>
+                          </div>
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label fw-semibold">Biaya Diajukan <span class="text-danger">*</span></label>
+                          <div class="input-group">
+                            <span class="input-group-text">Rp</span>
+                            <input type="number" class="form-control" id="inputBiaya" placeholder="50000" required>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Right Upload & Image Preview -->
+                    <div class="col-md-5 d-flex flex-column justify-content-between">
+                      <div>
+                        <label class="form-label fw-semibold">Photo Odometer <span class="text-danger">*</span></label>
+                        <div class="img-preview-box mb-3" id="previewContainer">
+                          <div class="text-center text-muted" id="placeholderText">
+                            <i class="fa-solid fa-cloud-arrow-up fs-1 mb-2 text-secondary"></i>
+                            <p class="mb-0 small">Preview Foto Odometer</p>
+                          </div>
+                          <img id="imagePreview" src="" alt="Preview" class="d-none">
+                        </div>
+                        <input type="file" class="form-control" id="inputPhoto" accept="image/*" required onchange="previewImage(event)">
+                      </div>
+                      <div class="mt-4">
+                        <button type="submit" class="btn btn-pnm w-100 py-2" id="btnSubmit">
+                          <i class="fa-solid fa-paper-plane me-2"></i>Simpan Data Reimburse
+                        </button>
+                      </div>
+                    </div>
+
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HALAMAN 2: RESUME TABLE, FILTER & EXPORT PDF -->
+      <div class="tab-pane fade" id="resume-pane" role="tabpanel">
+        
+        <!-- Filter Card -->
+        <div class="card card-custom mb-4">
+          <div class="card-body p-3">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Tanggal Mulai</label>
+                <input type="date" class="form-control form-control-sm" id="filterStartDate">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Tanggal Selesai</label>
+                <input type="date" class="form-control form-control-sm" id="filterEndDate">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Filter Nama PPM</label>
+                <select class="form-select form-select-sm" id="filterPpm">
+                  <option value="">-- Semua PPM --</option>
+                </select>
+              </div>
+              <div class="col-md-3 d-flex gap-2">
+                <button class="btn btn-pnm btn-sm w-100" onclick="applyFilter()">
+                  <i class="fa-solid fa-filter me-1"></i>Filter
+                </button>
+                <button class="btn btn-pnm-green btn-sm w-100" onclick="exportToPDF()">
+                  <i class="fa-solid fa-file-pdf me-1"></i>Ekspor PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Export PDF Container Area -->
+        <div id="pdfExportArea">
+          
+          <!-- EXPORT PAGE 1: TABLE 1 (REKAP DATA) -->
+          <div class="pdf-page card card-custom mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+              <div>
+                <h5 class="fw-bold mb-0 text-primary">HALAMAN 1: REKAP DATA REIMBURSE BBM</h5>
+                <small class="text-muted">Sumber Data: Sheet SOURCE (Kolom A-H)</small>
+              </div>
+              <span class="badge bg-primary">PNM Wilayah 2</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-bordered table-striped align-middle table-custom" id="table1">
+                <thead>
+                  <tr>
+                    <th>NO</th>
+                    <th>WILAYAH</th>
+                    <th>TGL NOTA</th>
+                    <th>NAMA PPM</th>
+                    <th>NOPOL</th>
+                    <th>JENIS</th>
+                    <th>KM</th>
+                    <th>BIAYA (RP)</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyTable1">
+                  <tr><td colspan="8" class="text-center py-3 text-muted">Memuat data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- EXPORT PAGE 2: TABLE 2 (BUKTI FOTO ODOMETER) -->
+          <div class="pdf-page card card-custom" style="page-break-before: always;">
+            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+              <div>
+                <h5 class="fw-bold mb-0 text-primary">HALAMAN 2: BUKTI FOTO ODOMETER</h5>
+                <small class="text-muted">Rincian Foto Odometer per Pengajuan (Offline Export Ready)</small>
+              </div>
+              <span class="badge bg-success">Lampiran Bukti</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-bordered align-middle table-custom" id="table2">
+                <thead>
+                  <tr>
+                    <th style="width: 15%;">TGL NOTA</th>
+                    <th style="width: 30%;">NAMA PPM</th>
+                    <th style="width: 20%;">KM ODOMETER</th>
+                    <th style="width: 35%;">GAMBAR FOTO ODOMETER</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyTable2">
+                  <tr><td colspan="4" class="text-center py-3 text-muted">Memuat data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div> <!-- End Export PDF Container -->
+
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyncOcZAf7mximElaoJ_RsjPfBACZHHKaYb7VuAZoaE3KF3nDsA8AEIF21nQBh6jqCb/exec";
+
+    let operatorList = [];
+    let sourceDataList = [];
+    let currentPhotoBase64 = "";
+
+    document.addEventListener("DOMContentLoaded", function() {
+      loadOperators();
+    });
+
+    // Fetch Data Operator dari Sheet OPERATOR
+    function loadOperators() {
+      fetch(`${SCRIPT_URL}?action=getOperators`)
+        .then(res => res.json())
+        .then(res => {
+          if (res.status === 'success') {
+            operatorList = res.data;
+            const select = document.getElementById('selectNamaPpm');
+            const filterPpm = document.getElementById('filterPpm');
+            
+            select.innerHTML = '<option value="" selected disabled>-- Pilih Nama PPM --</option>';
+            filterPpm.innerHTML = '<option value="">-- Semua PPM --</option>';
+
+            operatorList.forEach(op => {
+              select.innerHTML += `<option value="${op.nama}">${op.nama}</option>`;
+              filterPpm.innerHTML += `<option value="${op.nama}">${op.nama}</option>`;
+            });
+          }
+        })
+        .catch(err => console.error("Gagal load operator:", err));
+    }
+
+    // Auto Input Nopol & Jenis Kendaraan
+    function onOperatorChange() {
+      const selectedNama = document.getElementById('selectNamaPpm').value;
+      const op = operatorList.find(o => o.nama === selectedNama);
+      if (op) {
+        document.getElementById('inputNopol').value = op.nopol;
+        document.getElementById('inputJenisKendaraan').value = op.jenisKendaraan;
+      }
+    }
+
+    // Preview Image Upload
+    function previewImage(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          currentPhotoBase64 = e.target.result;
+          const img = document.getElementById('imagePreview');
+          img.src = currentPhotoBase64;
+          img.classList.remove('d-none');
+          document.getElementById('placeholderText').classList.add('d-none');
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    // Submit Form Reimburse
+    document.getElementById('formReimburse').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const btn = document.getElementById('btnSubmit');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Menyimpan...';
+
+      const payload = {
+        action: 'saveReimburse',
+        data: {
+          tanggalNota: document.getElementById('inputTanggalNota').value,
+          namaPpm: document.getElementById('selectNamaPpm').value,
+          nopol: document.getElementById('inputNopol').value,
+          jenisKendaraan: document.getElementById('inputJenisKendaraan').value,
+          kilometer: document.getElementById('inputKilometer').value,
+          biayaDiajukan: document.getElementById('inputBiaya').value,
+          photoBase64: currentPhotoBase64
+        }
+      };
+
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(res => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i>Simpan Data Reimburse';
+        if (res.status === 'success') {
+          alert('Data reimburse BBM berhasil disimpan!');
+          document.getElementById('formReimburse').reset();
+          document.getElementById('imagePreview').classList.add('d-none');
+          document.getElementById('placeholderText').classList.remove('d-none');
+          currentPhotoBase64 = "";
+        } else {
+          alert('Gagal menyimpan: ' + res.message);
+        }
+      })
+      .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i>Simpan Data Reimburse';
+        alert('Terjadi kesalahan koneksi.');
+      });
+    });
+
+    // Load Data Sheet Source
+    function loadSourceData() {
+      fetch(`${SCRIPT_URL}?action=getSourceData`)
+        .then(res => res.json())
+        .then(res => {
+          if (res.status === 'success') {
+            sourceDataList = res.data;
+            renderTables(sourceDataList);
+          }
+        });
+    }
+
+    // Render Table 1 & Table 2
+    function renderTables(data) {
+      const tbody1 = document.getElementById('tbodyTable1');
+      const tbody2 = document.getElementById('tbodyTable2');
+
+      if (data.length === 0) {
+        tbody1.innerHTML = '<tr><td colspan="8" class="text-center py-3">Tidak ada data.</td></tr>';
+        tbody2.innerHTML = '<tr><td colspan="4" class="text-center py-3">Tidak ada data.</td></tr>';
+        return;
+      }
+
+      tbody1.innerHTML = '';
+      tbody2.innerHTML = '';
+
+      data.forEach(item => {
+        // Table 1 (A-H)
+        tbody1.innerHTML += `
+          <tr>
+            <td>${item.no}</td>
+            <td>${item.wilayah}</td>
+            <td>${item.tanggalNota}</td>
+            <td>${item.namaPpm}</td>
+            <td>${item.nopol}</td>
+            <td>${item.jenisKendaraan}</td>
+            <td>${Number(item.kilometer).toLocaleString('id-ID')}</td>
+            <td>Rp ${Number(item.biayaDiajukan).toLocaleString('id-ID')}</td>
+          </tr>
+        `;
+
+        // Table 2 (Tanggal Nota, Nama PPM, KM, Gambar)
+        tbody2.innerHTML += `
+          <tr>
+            <td>${item.tanggalNota}</td>
+            <td>${item.namaPpm}</td>
+            <td>${Number(item.kilometer).toLocaleString('id-ID')} KM</td>
+            <td class="text-center">
+              <img src="${item.linkDrive}" class="img-thumbnail-table" crossorigin="anonymous" alt="Odometer">
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    // Filter Data berdasarkan Tanggal & Nama PPM
+    function applyFilter() {
+      const start = document.getElementById('filterStartDate').value;
+      const end = document.getElementById('filterEndDate').value;
+      const ppm = document.getElementById('filterPpm').value;
+
+      let filtered = sourceDataList;
+
+      if (start) {
+        filtered = filtered.filter(item => item.tanggalNota >= start);
+      }
+      if (end) {
+        filtered = filtered.filter(item => item.tanggalNota <= end);
+      }
+      if (ppm) {
+        filtered = filtered.filter(item => item.namaPpm === ppm);
+      }
+
+      renderTables(filtered);
+    }
+
+    // Export PDF Offline Ready
+    function exportToPDF() {
+      const element = document.getElementById('pdfExportArea');
+      const opt = {
+        margin:       [0.2, 0.2, 0.2, 0.2],
+        filename:     `Reimburse_BBM_PNM_${new Date().toISOString().slice(0,10)}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, allowTaint: true },
+        jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+      };
+
+      html2pdf().set(opt).from(element).save();
+    }
+  </script>
+</body>
+</html>
