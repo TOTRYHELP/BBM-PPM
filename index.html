@@ -160,6 +160,12 @@
             <i class="fa-solid fa-table-list me-2"></i>Resume & Export
           </button>
         </li>
+        <!-- TAB BARU: RESUME BBM -->
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="resume-bbm-tab" data-bs-toggle="tab" data-bs-target="#resume-bbm-pane" type="button" role="tab" onclick="loadSourceData()">
+            <i class="fa-solid fa-chart-pie me-2"></i>Resume BBM
+          </button>
+        </li>
       </ul>
     </div>
   </nav>
@@ -347,6 +353,68 @@
 
       </div>
 
+      <!-- HALAMAN 3: TAB RESUME BBM (PPM | TOTAL KLAIM MENGIKUTI FILTER) -->
+      <div class="tab-pane fade" id="resume-bbm-pane" role="tabpanel">
+        
+        <!-- Filter Card untuk Tab Resume BBM -->
+        <div class="card card-custom mb-4">
+          <div class="card-body p-3">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Tanggal Mulai</label>
+                <input type="date" class="form-control form-control-sm" id="filterStartDateBbm">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Tanggal Selesai</label>
+                <input type="date" class="form-control form-control-sm" id="filterEndDateBbm">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Nama PPM</label>
+                <select class="form-select form-select-sm" id="filterPpmBbm">
+                  <option value="">-- Semua PPM --</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <button class="btn btn-pnm btn-sm w-100" onclick="applyFilterBbm()">
+                  <i class="fa-solid fa-filter me-1"></i>Filter Resume
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabel Resume Klaim per PPM -->
+        <div class="card card-custom">
+          <div class="card-header-pnm d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-primary fw-bold"><i class="fa-solid fa-calculator me-2"></i>Resume Total Klaim per PPM</h5>
+            <span class="badge bg-primary">Ringkasan Klaim</span>
+          </div>
+          <div class="card-body p-4">
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover align-middle table-custom">
+                <thead>
+                  <tr>
+                    <th style="width: 10%;" class="text-center">NO</th>
+                    <th style="width: 50%;">NAMA PPM</th>
+                    <th style="width: 40%;" class="text-end">TOTAL KLAIM (RP)</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyResumeBbm">
+                  <tr><td colspan="3" class="text-center py-3 text-muted">Memuat data resume...</td></tr>
+                </tbody>
+                <tfoot>
+                  <tr class="fw-bold bg-light">
+                    <td colspan="2" class="text-end">GRAND TOTAL:</td>
+                    <td class="text-end text-primary fs-6" id="totalResumeBbm">Rp 0</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
     </div>
   </div>
 
@@ -371,13 +439,16 @@
             operatorList = res.data;
             const select = document.getElementById('selectNamaPpm');
             const filterPpm = document.getElementById('filterPpm');
+            const filterPpmBbm = document.getElementById('filterPpmBbm');
             
             select.innerHTML = '<option value="" selected disabled>-- Pilih Nama PPM --</option>';
             filterPpm.innerHTML = '<option value="">-- Semua PPM --</option>';
+            if(filterPpmBbm) filterPpmBbm.innerHTML = '<option value="">-- Semua PPM --</option>';
 
             operatorList.forEach(op => {
               select.innerHTML += `<option value="${op.nama}">${op.nama}</option>`;
               filterPpm.innerHTML += `<option value="${op.nama}">${op.nama}</option>`;
+              if(filterPpmBbm) filterPpmBbm.innerHTML += `<option value="${op.nama}">${op.nama}</option>`;
             });
           }
         })
@@ -460,6 +531,7 @@
           if (res.status === 'success') {
             sourceDataList = res.data;
             renderTables(sourceDataList);
+            renderResumeBbm(sourceDataList);
           }
         });
     }
@@ -521,7 +593,7 @@
                 imgEl.classList.remove('d-none');
                 if (loaderEl) loaderEl.remove();
               } else if (loaderEl) {
-                // Fallback menggunakanlh3 googleusercontent jika ada
+                // Fallback menggunakan lh3 googleusercontent jika ada
                 imgEl.src = `https://lh3.googleusercontent.com/d/${item.fileId}`;
                 imgEl.classList.remove('d-none');
                 loaderEl.remove();
@@ -538,6 +610,50 @@
             });
         }
       });
+    }
+
+    // FUNGSI UNTUK MERENDER TABEL RESUME BBM (PPM | TOTAL KLAIM)
+    function renderResumeBbm(data) {
+      const tbody = document.getElementById('tbodyResumeBbm');
+      const grandTotalEl = document.getElementById('totalResumeBbm');
+
+      if (!tbody) return;
+
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center py-3">Tidak ada data untuk ditampilkan.</td></tr>';
+        grandTotalEl.innerText = 'Rp 0';
+        return;
+      }
+
+      // Grouping Total Klaim berdasarkan Nama PPM
+      const summaryMap = {};
+      let grandTotal = 0;
+
+      data.forEach(item => {
+        const ppm = item.namaPpm || 'Lainnya';
+        const biaya = Number(item.biayaDiajukan) || 0;
+        
+        if (!summaryMap[ppm]) {
+          summaryMap[ppm] = 0;
+        }
+        summaryMap[ppm] += biaya;
+        grandTotal += biaya;
+      });
+
+      tbody.innerHTML = '';
+      let no = 1;
+
+      for (const [ppmName, totalBiaya] of Object.entries(summaryMap)) {
+        tbody.innerHTML += `
+          <tr>
+            <td class="text-center fw-semibold">${no++}</td>
+            <td class="fw-semibold">${ppmName}</td>
+            <td class="text-end fw-bold text-dark">Rp ${totalBiaya.toLocaleString('id-ID')}</td>
+          </tr>
+        `;
+      }
+
+      grandTotalEl.innerText = `Rp ${grandTotal.toLocaleString('id-ID')}`;
     }
 
     function applyFilter() {
@@ -558,6 +674,27 @@
       }
 
       renderTables(filtered);
+    }
+
+    // FILTER KHUSUS UNTUK TAB RESUME BBM
+    function applyFilterBbm() {
+      const start = document.getElementById('filterStartDateBbm').value;
+      const end = document.getElementById('filterEndDateBbm').value;
+      const ppm = document.getElementById('filterPpmBbm').value;
+
+      let filtered = sourceDataList;
+
+      if (start) {
+        filtered = filtered.filter(item => item.tanggalNota >= start);
+      }
+      if (end) {
+        filtered = filtered.filter(item => item.tanggalNota <= end);
+      }
+      if (ppm) {
+        filtered = filtered.filter(item => item.namaPpm === ppm);
+      }
+
+      renderResumeBbm(filtered);
     }
 
     function exportToPDF() {
