@@ -181,7 +181,7 @@
             <div class="card card-custom">
               <div class="card-header-pnm d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 text-primary fw-bold"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Form Input Reimburse BBM</h5>
-                <span class="badge bg-success px-3 py-2">Wilayah: 2</span>
+                <span class="badge bg-success px-3 py-2">PPM Cabang Yogyakarta</span>
               </div>
               <div class="card-body p-4">
                 <form id="formReimburse">
@@ -353,7 +353,7 @@
 
       </div>
 
-      <!-- HALAMAN 3: TAB RESUME BBM (PPM | TOTAL KLAIM MENGIKUTI FILTER) -->
+      <!-- HALAMAN 3: TAB RESUME BBM (PPM | TOTAL KILOMETER | TOTAL KLAIM MENGIKUTI FILTER) -->
       <div class="tab-pane fade" id="resume-bbm-pane" role="tabpanel">
         
         <!-- Filter Card untuk Tab Resume BBM -->
@@ -395,16 +395,18 @@
                 <thead>
                   <tr>
                     <th style="width: 10%;" class="text-center">NO</th>
-                    <th style="width: 50%;">NAMA PPM</th>
-                    <th style="width: 40%;" class="text-end">TOTAL KLAIM (RP)</th>
+                    <th style="width: 40%;">NAMA PPM</th>
+                    <th style="width: 25%;" class="text-end">TOTAL KILOMETER</th>
+                    <th style="width: 25%;" class="text-end">TOTAL KLAIM (RP)</th>
                   </tr>
                 </thead>
                 <tbody id="tbodyResumeBbm">
-                  <tr><td colspan="3" class="text-center py-3 text-muted">Memuat data resume...</td></tr>
+                  <tr><td colspan="4" class="text-center py-3 text-muted">Memuat data resume...</td></tr>
                 </tbody>
                 <tfoot>
                   <tr class="fw-bold bg-light">
                     <td colspan="2" class="text-end">GRAND TOTAL:</td>
+                    <td class="text-end text-primary fs-6" id="totalKmResumeBbm">0 KM</td>
                     <td class="text-end text-primary fs-6" id="totalResumeBbm">Rp 0</td>
                   </tr>
                 </tfoot>
@@ -612,48 +614,80 @@
       });
     }
 
-    // FUNGSI UNTUK MERENDER TABEL RESUME BBM (PPM | TOTAL KLAIM)
+    // FUNGSI UNTUK MERENDER TABEL RESUME BBM (PPM | TOTAL KM | TOTAL KLAIM)
     function renderResumeBbm(data) {
       const tbody = document.getElementById('tbodyResumeBbm');
       const grandTotalEl = document.getElementById('totalResumeBbm');
+      const grandTotalKmEl = document.getElementById('totalKmResumeBbm');
 
       if (!tbody) return;
 
       if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="text-center py-3">Tidak ada data untuk ditampilkan.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3">Tidak ada data untuk ditampilkan.</td></tr>';
         grandTotalEl.innerText = 'Rp 0';
+        if (grandTotalKmEl) grandTotalKmEl.innerText = '0 KM';
         return;
       }
 
-      // Grouping Total Klaim berdasarkan Nama PPM
+      // Grouping Data berdasarkan Nama PPM
       const summaryMap = {};
       let grandTotal = 0;
+      let grandTotalKm = 0;
 
       data.forEach(item => {
         const ppm = item.namaPpm || 'Lainnya';
         const biaya = Number(item.biayaDiajukan) || 0;
-        
+        const km = Number(item.kilometer) || 0;
+        const tgl = item.tanggalNota || '';
+        const id = item.no || 0;
+
         if (!summaryMap[ppm]) {
-          summaryMap[ppm] = 0;
+          summaryMap[ppm] = {
+            totalBiaya: 0,
+            items: []
+          };
         }
-        summaryMap[ppm] += biaya;
+        summaryMap[ppm].totalBiaya += biaya;
+        summaryMap[ppm].items.push({ km: km, tgl: tgl, id: id });
         grandTotal += biaya;
       });
 
       tbody.innerHTML = '';
       let no = 1;
 
-      for (const [ppmName, totalBiaya] of Object.entries(summaryMap)) {
+      for (const [ppmName, summary] of Object.entries(summaryMap)) {
+        // Urutkan item berdasarkan Tanggal Nota lalu No/ID jika tanggal sama
+        summary.items.sort((a, b) => {
+          if (a.tgl === b.tgl) {
+            return a.id - b.id;
+          }
+          return a.tgl > b.tgl ? 1 : -1;
+        });
+
+        // Pengurangan KM inputan termuda (terbaru) - tertua (terlama)
+        let totalKmDiff = 0;
+        if (summary.items.length > 1) {
+          const kmTertua = summary.items[0].km;
+          const kmTermuda = summary.items[summary.items.length - 1].km;
+          totalKmDiff = kmTermuda - kmTertua;
+        } else if (summary.items.length === 1) {
+          totalKmDiff = summary.items[0].km;
+        }
+
+        grandTotalKm += totalKmDiff;
+
         tbody.innerHTML += `
           <tr>
             <td class="text-center fw-semibold">${no++}</td>
             <td class="fw-semibold">${ppmName}</td>
-            <td class="text-end fw-bold text-dark">Rp ${totalBiaya.toLocaleString('id-ID')}</td>
+            <td class="text-end fw-bold text-dark">${totalKmDiff.toLocaleString('id-ID')} KM</td>
+            <td class="text-end fw-bold text-dark">Rp ${summary.totalBiaya.toLocaleString('id-ID')}</td>
           </tr>
         `;
       }
 
       grandTotalEl.innerText = `Rp ${grandTotal.toLocaleString('id-ID')}`;
+      if (grandTotalKmEl) grandTotalKmEl.innerText = `${grandTotalKm.toLocaleString('id-ID')} KM`;
     }
 
     function applyFilter() {
