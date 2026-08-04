@@ -9,7 +9,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Google Fonts (Plus Jakarta Sans) -->
+  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- html2pdf.js for Client-side PDF Generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -132,8 +132,8 @@
     }
 
     .img-thumbnail-table {
-      width: 130px;
-      height: 90px;
+      width: 140px;
+      height: 95px;
       object-fit: cover;
       border-radius: 6px;
       border: 1px solid #ddd;
@@ -363,7 +363,6 @@
       loadOperators();
     });
 
-    // Fetch Data Operator dari Sheet OPERATOR
     function loadOperators() {
       fetch(`${SCRIPT_URL}?action=getOperators`)
         .then(res => res.json())
@@ -385,7 +384,6 @@
         .catch(err => console.error("Gagal load operator:", err));
     }
 
-    // Auto Input Nopol & Jenis Kendaraan
     function onOperatorChange() {
       const selectedNama = document.getElementById('selectNamaPpm').value;
       const op = operatorList.find(o => o.nama === selectedNama);
@@ -395,7 +393,6 @@
       }
     }
 
-    // Preview Image Upload
     function previewImage(event) {
       const file = event.target.files[0];
       if (file) {
@@ -411,7 +408,6 @@
       }
     }
 
-    // Submit Form Reimburse
     document.getElementById('formReimburse').addEventListener('submit', function(e) {
       e.preventDefault();
       
@@ -457,7 +453,6 @@
       });
     });
 
-    // Load Data Sheet Source
     function loadSourceData() {
       fetch(`${SCRIPT_URL}?action=getSourceData`)
         .then(res => res.json())
@@ -469,7 +464,6 @@
         });
     }
 
-    // Render Table 1 & Table 2
     function renderTables(data) {
       const tbody1 = document.getElementById('tbodyTable1');
       const tbody2 = document.getElementById('tbodyTable2');
@@ -483,8 +477,8 @@
       tbody1.innerHTML = '';
       tbody2.innerHTML = '';
 
-      data.forEach(item => {
-        // Table 1 (A-H)
+      data.forEach((item, index) => {
+        // Table 1
         tbody1.innerHTML += `
           <tr>
             <td>${item.no}</td>
@@ -498,21 +492,54 @@
           </tr>
         `;
 
-        // Table 2 (Tanggal Nota, Nama PPM, KM, Gambar)
+        const imgElementId = `img-odo-${index}`;
+
+        // Table 2 dengan placeholder awal
         tbody2.innerHTML += `
           <tr>
             <td>${item.tanggalNota}</td>
             <td>${item.namaPpm}</td>
             <td>${Number(item.kilometer).toLocaleString('id-ID')} KM</td>
             <td class="text-center">
-              <img src="${item.linkDrive}" class="img-thumbnail-table" crossorigin="anonymous" alt="Odometer">
+              <div id="loader-${imgElementId}" class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <img id="${imgElementId}" class="img-thumbnail-table d-none" alt="Foto Odometer">
             </td>
           </tr>
         `;
+
+        // Ambil Base64 via Apps Script agar Tembus CORS & Tampil di PDF
+        if (item.fileId) {
+          fetch(`${SCRIPT_URL}?action=getImageBase64&fileId=${item.fileId}`)
+            .then(res => res.json())
+            .then(resImg => {
+              const imgEl = document.getElementById(imgElementId);
+              const loaderEl = document.getElementById(`loader-${imgElementId}`);
+              if (resImg.status === 'success' && imgEl) {
+                imgEl.src = resImg.base64;
+                imgEl.classList.remove('d-none');
+                if (loaderEl) loaderEl.remove();
+              } else if (loaderEl) {
+                // Fallback menggunakanlh3 googleusercontent jika ada
+                imgEl.src = `https://lh3.googleusercontent.com/d/${item.fileId}`;
+                imgEl.classList.remove('d-none');
+                loaderEl.remove();
+              }
+            })
+            .catch(() => {
+              const imgEl = document.getElementById(imgElementId);
+              const loaderEl = document.getElementById(`loader-${imgElementId}`);
+              if (imgEl) {
+                imgEl.src = `https://lh3.googleusercontent.com/d/${item.fileId}`;
+                imgEl.classList.remove('d-none');
+              }
+              if (loaderEl) loaderEl.remove();
+            });
+        }
       });
     }
 
-    // Filter Data berdasarkan Tanggal & Nama PPM
     function applyFilter() {
       const start = document.getElementById('filterStartDate').value;
       const end = document.getElementById('filterEndDate').value;
@@ -533,7 +560,6 @@
       renderTables(filtered);
     }
 
-    // Export PDF Offline Ready
     function exportToPDF() {
       const element = document.getElementById('pdfExportArea');
       const opt = {
